@@ -2,7 +2,7 @@ import cv2
 from PIL import Image
 import pyperclip
 
-video_path = 'whyyyyyy.mov'
+video_path = 'vid/whyyyyyy.mov'
 pix_count = 60
 all_output: str = ""z
 
