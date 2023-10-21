@@ -1,5 +1,4 @@
 import random
-import time
 from PIL import Image
 import pyperclip
 import flet as ft
@@ -9,43 +8,48 @@ import os
 class Formatter:
     def __init__(self):
         self.file_path: str = ""
-        self.alpha_channel: bool = False
-        self.size_limit: float = 50
+        self.transparency: bool = False
+        self.img_size: float = 0
         self.output: str = ""
-        self.color_limit: int = 0
+        self.color_amount: int = 0
         self.can_format: bool = False
-        self.size_multiplier: int = 0
-        self.output_path: str = "C:/SCPSL IMG FORMATTER/output.png"
+        self.output_name: str = ""
+        self.folder: str = f"{os.path.expanduser('~')}\\scpsl_img"
 
     def rgb_to_hex(self, rgb) -> str:
-        if self.alpha_channel:
-            out = "#{:02X}{:02X}{:02X}{:02X}".format(*rgb)
-            return out
+        if self.transparency:
+            return "#{:02X}{:02X}{:02X}{:02X}".format(*rgb)
         else:
-            out = "#{0:02x}{1:02x}{2:02x}".format(rgb[0], rgb[1], rgb[2])
-            return out
+            return "#{0:02x}{1:02x}{2:02x}".format(rgb[0], rgb[1], rgb[2])
 
     def format_image(self) -> None:
         image = Image.open(self.file_path)
         width, height = image.size
-        if width >= height:
-            self.size_multiplier = int(self.size_limit) / width
-        else:
-            self.size_multiplier = int(self.size_limit) / height
+        size_multiplier: float
 
-        width, height = int(round(width*self.size_multiplier, 1)), int(round(height*self.size_multiplier, 1))
+        if width >= height:
+            size_multiplier = int(self.img_size) / width
+        else:
+            size_multiplier = int(self.img_size) / height
+
+        width, height = int(round(width * size_multiplier, 1)), int(round(height * size_multiplier, 1))
 
         image = image.resize((width, height))
-        image = image.convert("P", colors=self.color_limit, palette=Image.ADAPTIVE)
-        image = image.convert('RGBA') if self.alpha_channel else image.convert('RGB')
 
-        folder = 'C:/SCPSL IMG FORMATTER/'
-        for filename in os.listdir(folder):
-            os.remove(os.path.join(folder, filename))
+        image = image.convert("P",
+                              colors=self.color_amount,
+                              palette=Image.ADAPTIVE)
 
-        self.output_path = f"C:/SCPSL IMG FORMATTER/{str(random.randint(1111111111, 9999999999))}.png"
+        image = image.convert('RGBA') if self.transparency else image.convert('RGB')
 
-        image.save(self.output_path)
+        for filename in os.listdir(self.folder):
+            if filename.endswith("_output.png"):
+                os.remove(os.path.join(self.folder, filename))
+
+        self.output_name = f"{self.folder}\\{str(random.randint(111, 999))}_output.png"
+        print(self.output_name)
+
+        image.save(self.output_name)
 
         last_hex: str = ""
         self.output: str = "<size=5><line-height=84%>"
@@ -67,11 +71,10 @@ class Formatter:
 
     def main(self, page: ft.Page) -> None:
         page.visible = False
-        page.title = "Image to SCP:SL hint formatter by @elektryk_andrzej"
+        page.title = "SCP:SL image formatter by @elektryk_andrzej"
         page.window_resizable = False
         page.horizontal_alignment = "center"
         page.vertical_alignment = "center"
-        #page.window_opacity = 0.95
         page.window_center()
         page.window_width = 700
         page.window_height = 675
@@ -88,13 +91,13 @@ class Formatter:
                 return
 
             if transparency.value == "✔ Yes":
-                self.alpha_channel = True
+                self.transparency = True
             else:
-                self.alpha_channel = False
-            self.size_limit = pix_count.value
+                self.transparency = False
+            self.img_size = pix_count.value
 
             try:
-                if int(self.size_limit) > 100:
+                if int(self.img_size) > 100:
                     pix_count.border_color = ft.colors.RED
                     pix_count.update()
                     return
@@ -107,8 +110,8 @@ class Formatter:
                 return
 
             try:
-                self.color_limit = int(colors.value)
-                if int(self.color_limit) > 256:
+                self.color_amount = int(colors.value)
+                if int(self.color_amount) > 256:
                     colors.border_color = ft.colors.RED
                     colors.update()
                     return
@@ -122,12 +125,12 @@ class Formatter:
 
             self.format_image()
             output_img.visible = True
-            output_img.src = self.output_path
+            output_img.src = self.output_name
             arrow_right.visible = True
             page.update()
             output_text.value = \
                 "Image has been formatted\n"\
-                f"(size - {len(self.output)} characters)"
+                f"size = {len(self.output)} characters"
             show_info(e)
 
         def changed_file_path(e):
@@ -184,13 +187,10 @@ class Formatter:
                 gradient=ft.LinearGradient(
                     begin=ft.alignment.top_center,
                     end=ft.alignment.bottom_center,
-                    colors=["#222222", "#111111"],
+                    colors=["#333333", "#111111"],
                 ),
             ),
-            open=True,
-
-
-
+            open=True
         )
 
         page.overlay.append(info_popup)
@@ -214,7 +214,7 @@ class Formatter:
             width=250,
             height=250,
             fit=ft.ImageFit.CONTAIN,
-            src=self.output_path,
+            src=self.output_name,
             error_content=no_img_selected,
             visible=False,
             tooltip="In-game image will look similar to this"
@@ -351,7 +351,7 @@ class Formatter:
             width=678,
             height=618,
             scale=1,
-            image_src=r"img/mountain-lake-minimalist-wallpaper-3440x1440_15.jpg",
+            image_src=f"{self.folder}\\bg.jpg",
             image_fit=ft.ImageFit.COVER,
             border_radius=15
         ))
@@ -362,5 +362,7 @@ class Formatter:
 
 
 if __name__ == "__main__":
+    if not os.path.isdir(f"{os.path.expanduser('~')}/scpsl_img"):
+        os.mkdir(f"{os.path.expanduser('~')}/scpsl_img")
     formatter = Formatter()
     ft.app(target=formatter.main)
