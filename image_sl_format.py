@@ -353,7 +353,7 @@ class Formatter:
             page.update()
             return
 
-        def redirect_to_website(url):
+        def redirect_to_website(e=None, url=None):
             self.can_redirect = False if self.can_redirect else True
 
             def close_alert(e):
