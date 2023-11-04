@@ -1,9 +1,12 @@
+import sys
+
+from PIL import Image
 import random
 import time
-from PIL import Image
 import pyperclip
 import flet as ft
 import os
+import requests
 
 
 class Formatter:
@@ -353,8 +356,8 @@ class Formatter:
             page.update()
             return
 
-        def redirect_to_website(e=None, url=None):
-            self.can_redirect = False if self.can_redirect else True
+        def redirect_to_website(url):
+            print("triggered")
 
             def close_alert(e):
                 redirect_alert.open = False
@@ -374,7 +377,13 @@ class Formatter:
                 actions_alignment=ft.MainAxisAlignment.SPACE_EVENLY,
                 on_dismiss=close_alert
             )
+            if self.can_redirect:
+                self.can_redirect = False
+            else:
+                self.can_redirect = True
+                return
 
+            page.add(redirect_alert)
             page.dialog = redirect_alert
             redirect_alert.open = True
             redirect_alert.update()
@@ -419,6 +428,28 @@ class Formatter:
         def change_max_byte_size(e: ft.ControlEvent):
             self.MAX_BYTE_SIZE = (int(e.control.value)/100) * 65534
 
+        def download_img(e):
+            url = (r"https://github.com/Elektryk-Andrzej/"
+                   r"Image-Formatter-for-SCP-SL/assets/100864896/5ddb16e6-9ffe-4744-8068-551057ad267d")
+
+            data = requests.get(url).content
+            with open(f'{self.folder}\\bg.jpg', 'wb') as file:
+                file.write(data)
+
+            downloaded_alert = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(
+                    f"\"bg.jpg\" has been downloaded.\n"
+                    f"Restart the program for changes to take place.",
+                    text_align=ft.TextAlign.CENTER
+                ),
+                actions_alignment=ft.MainAxisAlignment.CENTER
+            )
+            page.add(downloaded_alert)
+            page.dialog = downloaded_alert
+            downloaded_alert.open = True
+            page.update()
+
         settings_button = ft.IconButton(
             icon=ft.icons.MENU,
             icon_color=ft.colors.BLACK,
@@ -428,28 +459,29 @@ class Formatter:
         settings_popup = ft.BottomSheet(
             ft.Container(
                 ft.Column([
-                    ft.Text("WORK IN PROGRESS", size=30),
-
                     ft.Row([
                         ft.Column([
                             ft.Text(
-                                "Max image size.\n"
-                                "Change if you get network errors while sending the image.",
+                                "Max image size",
                                 size=18,
                                 text_align=ft.TextAlign.CENTER,
                             ),
 
                             ft.Row([
-                                ft.Text("test"),
+                                ft.Icon(name=ft.icons.ASPECT_RATIO_ROUNDED),
 
                                 ft.Slider(
-                                    min=0, max=500, divisions=20, width=500, value=100,
-                                    label=" {value}% ",
+                                    min=20, max=200, divisions=9, width=500, value=100,
+                                    label="  {value}%  ",
                                     on_change=change_max_byte_size,
-                                    thumb_color=ft.colors.RED
                                 ),
                             ],
 
+                            ),
+
+                            ft.TextButton(
+                                "test",
+                                on_click=download_img
                             )
 
                         ],
@@ -648,7 +680,7 @@ class Formatter:
             multiline=True,
             color="#ffffff",
             border_color="#11000000",
-            on_focus=lambda e: redirect_to_website("test")
+            on_focus=lambda e: redirect_to_website("https://github.com/Elektryk-Andrzej/Image-Formatter-for-SCP-SL")
         )
 
         se_hint = ft.TextField(
@@ -723,9 +755,11 @@ class Formatter:
         no_bg_alert = ft.AlertDialog(
             title=ft.Text(
                 f"No \"bg.jpg\" file found in {self.folder}\n"
-                f"Consider downloading it from GitHub"
+                f"Downloading...",
+                text_align=ft.TextAlign.CENTER
             ),
-            actions_alignment=ft.MainAxisAlignment.CENTER
+            actions_alignment=ft.MainAxisAlignment.CENTER,
+            on_dismiss=download_img
         )
         page.opacity = 1
         page.bgcolor = "#928fcc"
@@ -740,8 +774,3 @@ if __name__ == "__main__":
 
     formatter = Formatter()
     ft.app(target=formatter.main)
-
-
-
-
-
