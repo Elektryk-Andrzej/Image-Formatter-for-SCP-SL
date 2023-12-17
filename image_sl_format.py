@@ -41,12 +41,12 @@ class Formatter:
               f"\n")
 
         image = Image.open(self.file_path)
-        width, height = image.size
+        org_width, org_height = image.size
         size_multiplier: float
 
-        size_multiplier = int(self.img_size) / width if width >= height else int(self.img_size) / height
+        size_multiplier = int(self.img_size) / org_width if org_width >= org_height else int(self.img_size) / org_height
 
-        width, height = int(round(width * size_multiplier, 1)), int(round(height * size_multiplier, 1))
+        width, height = int(round(org_width * size_multiplier, 1)), int(round(org_height * size_multiplier, 1))
         image = image.resize((width, height))
 
         image = image.convert("P",
@@ -97,7 +97,15 @@ class Formatter:
                     print(f"!-- Could not remove file {filename}\n")
 
         self.output_name = f"{self.folder}/{str(random.randint(11111111111111111, 99999999999999999))}_output.png"
+        diff_multiplier = 1920 / org_width
+
+        image = image.resize(
+            (int(org_width * diff_multiplier),
+             int(org_height * diff_multiplier)),
+            Image.NEAREST
+        )
         image.save(self.output_name)
+
         print(f"Image has been saved as {self.output_name}\n")
 
         self.formatting = False
