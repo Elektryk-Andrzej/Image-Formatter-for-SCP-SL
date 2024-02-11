@@ -1,5 +1,3 @@
-import sys
-
 from PIL import Image
 import random
 import time
@@ -23,12 +21,14 @@ class Formatter:
         self.can_redirect: bool = True
         self.MAX_BYTE_SIZE: int = 65534
         self.formatting: bool = False
+        self.format_for_se: bool = False
+        self.format_for_cmd: bool = False
 
     def rgb_to_hex(self, rgb) -> str:
         if self.transparency:
             return "#{:02X}{:02X}{:02X}{:02X}".format(*rgb)
-        else:
-            return "#{0:02x}{1:02x}{2:02x}".format(rgb[0], rgb[1], rgb[2])
+
+        return "#{0:02x}{1:02x}{2:02x}".format(rgb[0], rgb[1], rgb[2])
 
     def format_image(self, *, create_previev: bool) -> None:
         self.bytes = 0
@@ -42,22 +42,39 @@ class Formatter:
 
         image = Image.open(self.file_path)
         org_width, org_height = image.size
-        size_multiplier: float
-
-        size_multiplier = int(self.img_size) / org_width if org_width >= org_height else int(self.img_size) / org_height
+        size_multiplier: float = (
+            int(self.img_size) / org_width
+            if org_width >= org_height else
+            int(self.img_size) / org_height
+        )
 
         width, height = int(round(org_width * size_multiplier, 1)), int(round(org_height * size_multiplier, 1))
+        if width == 0 or height == 0:
+            self.formatting = False
+            return
+
         image = image.resize((width, height))
 
-        image = image.convert("P",
-                              colors=self.color_amount,
-                              palette=Image.ADAPTIVE)
+        image = image.convert(
+            "P",
+            colors=self.color_amount,
+            palette=Image.ADAPTIVE
+        )
 
         image = image.convert('RGBA') if self.transparency else image.convert('RGB')
 
         last_hex: str = ""
-        self.output: str = "<size=5><line-height=84%>"
-        self.bytes += 25
+        if self.format_for_cmd:
+            self.output = "act HINT 10 "
+
+        elif self.format_for_se:
+            self.output = "HINT 10 "
+
+        else:
+            self.output = ""
+
+        self.output += "<size=5><line-height=84%>"
+        self.bytes += len(self.output)
 
         for y in range(height):
             for x in range(width):
@@ -117,13 +134,28 @@ class Formatter:
         page.window_resizable = False
         page.horizontal_alignment = "center"
         page.vertical_alignment = "center"
-        page.window_width = 700
-        page.window_height = 675
+        page.window_width = 750
+        page.window_height = 635
         page.window_maximizable = False
         page.theme_mode = "light"
-        page.padding = 10
         page.bgcolor = "#00000000"
         page.window_bgcolor = "#00000000"
+
+        def change_for_se_formatting(_):
+            self.format_for_se = True if self.format_for_se is not True else False
+            if not self.format_for_se:
+                se_command_format_checkbox.disabled = True
+                se_command_format_checkbox.value = False
+                self.format_for_cmd = False
+            else:
+                se_command_format_checkbox.disabled = False
+
+            se_command_format_checkbox.update()
+            print(f"{self.format_for_se = }")
+
+        def change_for_cmd_formatting(_):
+            self.format_for_cmd = True if self.format_for_cmd is not True else False
+            print(f"{self.format_for_cmd = }")
 
         def show_formatted_img(e) -> None:
             """
@@ -270,7 +302,7 @@ class Formatter:
 
             show_formatted_img(e)
 
-        def smart_format_button_clicked(e):
+        def smart_format_button_clicked(_):
             def max_pixels(e):
                 if self.formatting:
                     close(e)
@@ -342,7 +374,7 @@ class Formatter:
                 show_formatted_img(e)
                 return
 
-            def close(e):
+            def close(_):
                 if self.formatting:
                     return
                 smart_format_alert.open = False
@@ -364,39 +396,7 @@ class Formatter:
             page.update()
             return
 
-        def redirect_to_website(url):
-            print("triggered")
-
-            def close_alert(e):
-                redirect_alert.open = False
-                page.update()
-
-            def send_to_url(e):
-                page.launch_url(url)
-                close_alert(e)
-
-            redirect_alert = ft.AlertDialog(
-                title=ft.Text(f"Do you really want to open"),
-                content=ft.Text(f"\"{url}\"?"),
-                actions=[
-                    ft.TextButton("Yes", on_click=send_to_url),
-                    ft.TextButton("No, thanks", on_click=close_alert),
-                ],
-                actions_alignment=ft.MainAxisAlignment.SPACE_EVENLY,
-                on_dismiss=close_alert
-            )
-            if self.can_redirect:
-                self.can_redirect = False
-            else:
-                self.can_redirect = True
-                return
-
-            page.add(redirect_alert)
-            page.dialog = redirect_alert
-            redirect_alert.open = True
-            redirect_alert.update()
-
-        def changed_file_path(e):
+        def changed_file_path(_):
             image_file_path.value = str(image_file_path.value).replace("\"", "")
 
             selected_img.src = "vanish"
@@ -412,7 +412,7 @@ class Formatter:
 
             page.update()
 
-        def copy_to_clipboard(e):
+        def copy_to_clipboard(_):
             copy_button.icon = ft.icons.CHECK_CIRCLE_OUTLINED
             copy_button.update()
             time.sleep(0.15)
@@ -425,18 +425,15 @@ class Formatter:
             copy_button.icon = ft.icons.COPY_ROUNDED
             copy_button.update()
 
-        def show_formatted_popup(e):
+        def show_formatted_popup(_):
             image_formatted_popup.open = True
             image_formatted_popup.update()
 
-        def show_settings(e):
+        def show_settings(_):
             settings_popup.open = True
             settings_popup.update()
 
-        def change_max_byte_size(e: ft.ControlEvent):
-            self.MAX_BYTE_SIZE = (int(e.control.value)/100) * 65534
-
-        def download_img(e):
+        def download_img(_):
             url = (r"https://github.com/Elektryk-Andrzej/"
                    r"Image-Formatter-for-SCP-SL/assets/100864896/5ddb16e6-9ffe-4744-8068-551057ad267d")
 
@@ -460,65 +457,63 @@ class Formatter:
 
         settings_button = ft.IconButton(
             icon=ft.icons.MENU,
-            icon_color=ft.colors.BLACK,
             on_click=show_settings
+        )
+
+        def pick_files_result(e: ft.FilePickerResultEvent):
+            if not e.files:
+                return
+            image_file_path.value = e.files[0].path
+            image_file_path.update()
+            changed_file_path(None)
+
+        filepicker_button = ft.IconButton(
+            icon=ft.icons.IMAGE_SEARCH,
+            on_click=lambda _: pick_files_dialog.pick_files()
+        )
+
+        pick_files_dialog = ft.FilePicker(on_result=pick_files_result)
+        page.overlay.append(pick_files_dialog)
+
+        se_script_format_checkbox = ft.Checkbox(
+            label="Format hints to an SE script?",
+            value=False,
+            on_change=change_for_se_formatting,
+            scale=ft.Scale(1.4, alignment=ft.Alignment(-1, 0))
+        )
+
+        se_command_format_checkbox = ft.Checkbox(
+            label="Format hints to an SE command?",
+            value=False,
+            on_change=change_for_cmd_formatting,
+            scale=ft.Scale(1.4, alignment=ft.Alignment(-1, 0)),
+            disabled=True
         )
 
         settings_popup = ft.BottomSheet(
             ft.Container(
                 ft.Column([
-                    ft.Row([
-                        ft.Column([
-                            ft.Text(
-                                "Max image size",
-                                size=18,
-                                text_align=ft.TextAlign.CENTER,
-                            ),
-
-                            ft.Row([
-                                ft.Icon(name=ft.icons.ASPECT_RATIO_ROUNDED),
-
-                                ft.Slider(
-                                    min=20, max=200, divisions=9, width=500, value=100,
-                                    label="  {value}%  ",
-                                    on_change=change_max_byte_size,
-                                ),
-                            ],
-
-                            ),
-
-                            ft.TextButton(
-                                "test",
-                                on_click=download_img
-                            )
-
-                        ],
-                            alignment=ft.MainAxisAlignment.CENTER,
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-                        ),
-                    ],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER
-                    )
+                    ft.Text(
+                        value="ScriptedEvents integration settings",
+                        scale=ft.Scale(2, alignment=ft.Alignment(0, 3))
+                    ),
+                    se_script_format_checkbox,
+                    se_command_format_checkbox
                 ],
                     alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=30
 
                 ),
                 padding=30,
                 width=600,
                 border_radius=ft.border_radius.vertical(10, 0),
-                alignment=ft.Alignment(0, 0)
+                #alignment=ft.Alignment(0, 0)
             )
         )
 
+        settings_popup.open = False
         page.overlay.append(settings_popup)
-
-        output_text = ft.Text(
-            value="Image has been formatted",
-            size=25,
-            color="#000000"
-        )
 
         copy_button = ft.FilledButton(
             "Copy to clipboard",
@@ -530,17 +525,16 @@ class Formatter:
         image_formatted_popup = ft.BottomSheet(
             ft.Container(
                 ft.Row(
-                    [output_text, copy_button],
-                    tight=True,
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    [copy_button],
+                    alignment=ft.MainAxisAlignment.CENTER,
                 ),
                 padding=30,
-                width=700,
+                width=260,
                 border_radius=ft.border_radius.vertical(10, 0),
             ),
             open=True
         )
-
+        image_formatted_popup.open = False
         page.overlay.append(image_formatted_popup)
 
         no_img_selected = ft.Icon(
@@ -564,20 +558,21 @@ class Formatter:
             src=self.output_name,
             error_content=no_img_selected,
             visible=False,
-            tooltip="In-game image will look similar to this"
+            tooltip="In-game image will look like this",
         )
 
         image_file_path = ft.TextField(
             label="Image path",
-            prefix_icon=ft.icons.IMAGE_SEARCH,
+            prefix_icon=ft.icons.TERMINAL_ROUNDED,
             on_change=changed_file_path,
             border_color=ft.colors.RED,
-            width=495,
+            width=445,
             hint_text="e.g. boykisser.jpg",
             text_style=ft.TextStyle(
                 weight=ft.FontWeight.W_700
             )
         )
+        second_level_width: int = 180
 
         image_transparency = ft.Dropdown(
             label="Transparency",
@@ -587,56 +582,73 @@ class Formatter:
                 ft.dropdown.Option("❌ No"),
             ],
             prefix_icon=ft.icons.REMOVE_RED_EYE_OUTLINED,
-            width=175,
+            width=second_level_width,
             text_style=ft.TextStyle(
                 weight=ft.FontWeight.W_700,
-                color="#000000"
-            ),
-            focused_border_color="#000000"
+                color=ft.colors.BLACK
+            )
         )
 
         image_size = ft.TextField(
             label="Pixel count",
-            value=str(21),
+            value="21",
             prefix_icon=ft.icons.ASPECT_RATIO_ROUNDED,
-            width=175,
+            width=second_level_width,
             text_style=ft.TextStyle(
                 weight=ft.FontWeight.W_700
             )
+        )
+
+        image_colors = ft.TextField(
+            label="Color count",
+            width=second_level_width,
+            value="37",
+            prefix_icon=ft.icons.COLOR_LENS_OUTLINED,
+            text_style=ft.TextStyle(
+                weight=ft.FontWeight.W_700
+            )
+
+        )
+
+        button_style = ft.ButtonStyle(
+            color={
+                ft.MaterialState.DEFAULT: "#ddffffff",
+                ft.MaterialState.HOVERED: "#ff000000"
+            },
+            bgcolor={
+                ft.MaterialState.DEFAULT: "#01ffffff",
+                ft.MaterialState.HOVERED: "#48ffffff"
+            },
+            elevation={
+                ft.MaterialState.PRESSED: 0,
+                ft.MaterialState.DEFAULT: 10
+            },
+            shadow_color=ft.colors.BLACK,
+            overlay_color="#11ffffff",
+            animation_duration=5,
+            surface_tint_color="#55fca68b"
+
         )
 
         format_button = ft.ElevatedButton(
             text="Format",
             icon=ft.icons.ROTATE_LEFT,
             on_click=standard_format,
-            color="#ffffff",
-            bgcolor="#00000000",
+            style=button_style
         )
 
         smart_format_button = ft.ElevatedButton(
             text="Smart format",
-            color="#ffffff",
-            bgcolor="#00000000",
             icon=ft.icons.AUTO_AWESOME_OUTLINED,
             on_click=smart_format_button_clicked,
+            style=button_style
         )
 
         one_to_one_format_button = ft.ElevatedButton(
             text="1:1 format",
-            color="#ffffff",
-            bgcolor="#00000000",
             icon=ft.icons.IMAGE_ASPECT_RATIO_ROUNDED,
             on_click=one_to_one_format,
-        )
-
-        image_colors = ft.TextField(
-            label="Color count",
-            width=175,
-            value=str(37),
-            prefix_icon=ft.icons.COLOR_LENS_OUTLINED,
-            text_style=ft.TextStyle(
-                weight=ft.FontWeight.W_700
-            )
+            style=button_style
         )
 
         arrow_right = ft.Icon(
@@ -646,79 +658,20 @@ class Formatter:
             visible=False
         )
 
-        path_hint = ft.TextField(
-            value=(
-                "How do I get a path of my image?\n\n"
-                "Shift + RMB your image and select \"Copy as Path\"."
-            ),
-            width=230,
-            height=130,
-            disabled=True,
-            text_size=12,
-            multiline=True,
-            color="#ffffff",
-            border_color="#ff000000"
-        )
-
-        size_hint = ft.TextField(
-            value=(
-                "Why is there a image size limit?\n\n"
-                "Hints in SCP:SL have a size limit of 65534 bytes, "
-                "so we can\'t have unlimited pixels :<"
-            ),
-            width=225,
-            height=130,
-            disabled=True,
-            text_size=12,
-            multiline=True,
-            color="#ffffff",
-            border_color="#ff000000"
-        )
-
-        github_hint = ft.TextField(
-            value=(
-                "Where can I find the GitHub page?\n\n"
-                "You can find it by clicking this box. "
-                "There you can submit bug reports, new ideas, get help etc."
-            ),
-            width=250,
-            height=130,
-            read_only=True,
-            text_size=12,
-            multiline=True,
-            color="#ffffff",
-            border_color="#11000000",
-            on_focus=lambda e: redirect_to_website("https://github.com/Elektryk-Andrzej/Image-Formatter-for-SCP-SL")
-        )
-
-        se_hint = ft.TextField(
-            value=(
-                "What to do with a formatted image?\n\n"
-                "By clicking this box, you can find a tutorial using "
-                "a plugin \"Scripted Events\" to send images in SCP:SL."
-            ),
-            width=250,
-            height=130,
-            read_only=True,
-            text_size=12,
-            multiline=True,
-            color="#ffffff",
-            border_color="#11000000",
-            on_focus=lambda e: redirect_to_website("coming soon™")
-        )
-
         ui = (ft.Container(
             ft.Stack([
                 ft.Column([
-                    ft.Row(
-                        [image_file_path, settings_button],
-                        alignment=ft.MainAxisAlignment.CENTER
-                    ),
+                    ft.Column([
+                        ft.Row(
+                            [filepicker_button, image_file_path, settings_button],
+                            alignment=ft.MainAxisAlignment.CENTER
+                        ),
 
-                    ft.Row(
-                        [image_transparency, image_size, image_colors],
-                        alignment=ft.MainAxisAlignment.CENTER
-                    ),
+                        ft.Row(
+                            [image_transparency, image_size, image_colors],
+                            alignment=ft.MainAxisAlignment.CENTER
+                        ),
+                    ]),
 
                     ft.Row(
                         [selected_img, arrow_right, output_img],
@@ -727,30 +680,20 @@ class Formatter:
 
                     ft.Row(
                         [one_to_one_format_button, format_button, smart_format_button],
-                        alignment=ft.MainAxisAlignment.CENTER,
+                        alignment=ft.MainAxisAlignment.SPACE_EVENLY,
+                        spacing=45
                     ),
-
-                    ft.Row(
-                        [
-                            se_hint,
-                            path_hint,
-                            size_hint,
-                            github_hint
-                        ],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        scroll=ft.ScrollMode.ALWAYS,
-                        wrap=False
-                    )
                 ],
-                    alignment=ft.MainAxisAlignment.CENTER
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=20
                 )]
             ),
-            width=678,
-            height=618,
+            width=700,
+            height=560,
             image_src=f"{self.folder}\\bg.jpg",
             image_fit=ft.ImageFit.COVER,
-            border_radius=15,
-            padding=20
+            border_radius=10,
+
         ))
 
         page.add(ui)
