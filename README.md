@@ -6,7 +6,7 @@
 
 ## Features
 Support for images of type:
-PNG, JPEG, PPM, GIF, TIFF, and BMP
+PNG, JPEG, PPM, GIF, TIFF, ICO and BMP
 
 - Smart formatting for the best picture quality
   
