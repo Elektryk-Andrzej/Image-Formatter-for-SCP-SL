@@ -27,6 +27,10 @@ This project is using PyInstaller - a way to package python to an executable fil
 It unfortunetley causes Windows Defender and other antivirus software to mark it as a some sort of trojan.
 If you know Python, just take a look at the code to know for yourself or run it on a Virtual Machine.
 
+## The .exe does't work!
+It's possible that the .exe file could not work due to problems with packaging .py into .exe. 
+There isn't a lot that can be done, except for downloading the raw .py and running it using an IDE like VS Code.
+
 
 ### Background image used
 ![bg](https://github.com/Elektryk-Andrzej/Image-Formatter-for-SCP-SL/assets/100864896/5ddb16e6-9ffe-4744-8068-551057ad267d)
