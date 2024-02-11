@@ -1,8 +1,6 @@
 # Image Formatter for SCPSL
 
 ## Features
-https://github.com/Elektryk-Andrzej/Image-Formatter-for-SCP-SL/assets/100864896/028cae6d-01da-4c2d-a4d8-57e3e9e59338
-
 Support for images of type:
 PNG, JPEG, PPM, GIF, TIFF, and BMP
 
