@@ -1,5 +1,9 @@
 # Image Formatter for SCPSL
 
+## Showcase
+![img.png](img.png)
+![img_1.png](img_1.png)
+
 ## Features
 Support for images of type:
 PNG, JPEG, PPM, GIF, TIFF, and BMP
